@@ -1,0 +1,33 @@
+name: H Funding Monitor
+
+on:
+  schedule:
+    - cron: '*/10 * * * *'  # 每10分钟
+  workflow_dispatch:
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install deps
+        run: pip install requests
+
+      - name: Monitor
+        env:
+          WX_TOKEN: ${{ secrets.WX_TOKEN }}
+          WX_TOPIC: ${{ secrets.WX_TOPIC }}
+        run: python monitor.py
+
+      - name: Save state
+        uses: actions/upload-artifact@v4
+        with:
+          name: state
+          path: /tmp/funding_state.json
+          retention-days: 1
+          if-no-files-found: ignore
