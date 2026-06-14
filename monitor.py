@@ -178,7 +178,8 @@ def check_signal(state, gt_rate, gt_price, bg_rate, ox_rate, pctx):
                 sl = calc_sl(gt_price, pctx.get("support"))
                 tp = calc_tp(gt_price, pctx.get("resistance"), sl)
                 signal = {
-                    "name": "🟢 做多: 空头正在平仓(回升趋势)",
+                    "tag": "FRIEND_STRATEGY",
+                    "name": "🔥 朋友方案: 费率回升趋势(重点信号)",
                     "detail": f"Gate费率 {mn*100:.2f}% → {gt_rate*100:.2f}% (回升 {recovery_from_low*100:.2f}%)",
                     "reason": f"费率从深负回升 = 空头在买入平仓 = 真实买盘涌入",
                     "strength": "强" if recovery_from_low > 0.005 else "中",
@@ -189,6 +190,7 @@ def check_signal(state, gt_rate, gt_price, bg_rate, ox_rate, pctx):
                     "tp": tp,
                     "rr": (tp - gt_price) / (gt_price - sl) if gt_price > sl else 0,
                     "earn": f"每8小时收{abs(gt_rate)*100:.2f}%",
+                    "recovery_pct": recovery_from_low * 100,
                 }
                 last["trend_recovery"] = now
 
@@ -274,33 +276,67 @@ def main():
     signal = check_signal(state, gt_rate, gt_price, bg, ox, pctx)
 
     if signal:
-        print(f"\n{'='*50}")
-        print(f"信号: {signal['name']}")
-        print(f"详情: {signal['detail']}")
-        print(f"原因: {signal['reason']}")
-        print(f"强度: {signal['strength']} | 平台: {signal['platform']} | 建议: {signal['action']}")
-        if signal.get("entry"): print(f"入场: ${signal['entry']:,.4f}")
-        if signal.get("sl"): print(f"止损: ${signal['sl']:,.4f}")
-        if signal.get("tp"): print(f"止盈: ${signal['tp']:,.4f}")
-        if signal.get("rr"): print(f"盈亏比: {signal['rr']:.1f}:1")
-        if signal.get("earn"): print(f"费率收益: {signal['earn']}")
-        print(f"{'='*50}")
+        is_friend = signal.get("tag") == "FRIEND_STRATEGY"
 
-        sl_h = f"<p>🛑 止损:<b>${signal['sl']:,.4f}</b></p>" if signal.get("sl") else ""
-        tp_h = f"<p>🎯 止盈:<b>${signal['tp']:,.4f}</b></p>" if signal.get("tp") else ""
-        rr_h = f"<p>📊 盈亏比:<b>{signal['rr']:.1f}:1</b></p>" if signal.get("rr") else ""
-        earn_h = f"<p>💰 {signal['earn']}</p>" if signal.get("earn") else ""
-        html = (
-            f"<h2>{signal['name']}</h2>"
-            f"<p>📊 <b>{signal['detail']}</b></p>"
-            f"<p>💡 {signal['reason']}</p>"
-            f"<p>🎯 强度:<b>{signal['strength']}</b> 平台:<b>{signal['platform']}</b> 建议:<b>{signal['action']}</b></p>"
-            f"<p>📈 入场:<b>${signal.get('entry', gt_price):,.4f}</b></p>"
-            f"{sl_h}{tp_h}{rr_h}{earn_h}"
-            f"<p>📉 Gate:{gt_rate*100:+.3f}% | Bitget:{bg*100:+.3f}% | OKX:{ox*100:+.3f}%</p>"
-            f"<p>⏰ {datetime.now(tz8).strftime('%Y-%m-%d %H:%M:%S')}</p>"
-        )
-        send_wx(f"🟢 H做多信号: {signal['action']}", html)
+        if is_friend:
+            # 朋友方案: 重点标出
+            print(f"\n{'*'*60}")
+            print(f"***  {signal['name']}  ***")
+            print(f"***  {signal['detail']}  ***")
+            print(f"***  {signal['reason']}  ***")
+            print(f"***  强度:{signal['strength']} | 平台:{signal['platform']} | 建议:{signal['action']}  ***")
+            if signal.get("entry"): print(f"***  入场:${signal['entry']:,.4f}  ***")
+            if signal.get("sl"): print(f"***  止损:${signal['sl']:,.4f}  ***")
+            if signal.get("tp"): print(f"***  止盈:${signal['tp']:,.4f}  ***")
+            if signal.get("rr"): print(f"***  盈亏比:{signal['rr']:.1f}:1  ***")
+            if signal.get("earn"): print(f"***  {signal['earn']}  ***")
+            print(f"{'*'*60}")
+
+            sl_h = f"<p>🛑 止损:<b>${signal['sl']:,.4f}</b></p>" if signal.get("sl") else ""
+            tp_h = f"<p>🎯 止盈:<b>${signal['tp']:,.4f}</b></p>" if signal.get("tp") else ""
+            rr_h = f"<p>📊 盈亏比:<b>{signal['rr']:.1f}:1</b></p>" if signal.get("rr") else ""
+            earn_h = f"<p>💰 {signal['earn']}</p>" if signal.get("earn") else ""
+            html = (
+                f"<h1 style='color:red'>🔥 {signal['name']}</h1>"
+                f"<h2>Gate费率 {signal.get('recovery_pct', 0):.2f}% 回升中</h2>"
+                f"<p>📊 <b>{signal['detail']}</b></p>"
+                f"<p>💡 <b>{signal['reason']}</b></p>"
+                f"<p>🎯 强度:<b>{signal['strength']}</b> 平台:<b>{signal['platform']}</b></p>"
+                f"<h3>📈 入场:<b>${signal.get('entry', gt_price):,.4f}</b></h3>"
+                f"{sl_h}{tp_h}{rr_h}{earn_h}"
+                f"<p>📉 Gate:{gt_rate*100:+.3f}% | Bitget:{bg*100:+.3f}% | OKX:{ox*100:+.3f}%</p>"
+                f"<p>⏰ {datetime.now(tz8).strftime('%Y-%m-%d %H:%M:%S')}</p>"
+            )
+            send_wx(f"🔥 朋友方案触发! Gate费率回升{signal.get('recovery_pct',0):.2f}%", html)
+        else:
+            # 其他信号: 普通显示
+            print(f"\n{'='*50}")
+            print(f"信号: {signal['name']}")
+            print(f"详情: {signal['detail']}")
+            print(f"原因: {signal['reason']}")
+            print(f"强度: {signal['strength']} | 平台: {signal['platform']} | 建议: {signal['action']}")
+            if signal.get("entry"): print(f"入场: ${signal['entry']:,.4f}")
+            if signal.get("sl"): print(f"止损: ${signal['sl']:,.4f}")
+            if signal.get("tp"): print(f"止盈: ${signal['tp']:,.4f}")
+            if signal.get("rr"): print(f"盈亏比: {signal['rr']:.1f}:1")
+            if signal.get("earn"): print(f"费率收益: {signal['earn']}")
+            print(f"{'='*50}")
+
+            sl_h = f"<p>🛑 止损:<b>${signal['sl']:,.4f}</b></p>" if signal.get("sl") else ""
+            tp_h = f"<p>🎯 止盈:<b>${signal['tp']:,.4f}</b></p>" if signal.get("tp") else ""
+            rr_h = f"<p>📊 盈亏比:<b>{signal['rr']:.1f}:1</b></p>" if signal.get("rr") else ""
+            earn_h = f"<p>💰 {signal['earn']}</p>" if signal.get("earn") else ""
+            html = (
+                f"<h2>{signal['name']}</h2>"
+                f"<p>📊 <b>{signal['detail']}</b></p>"
+                f"<p>💡 {signal['reason']}</p>"
+                f"<p>🎯 强度:<b>{signal['strength']}</b> 平台:<b>{signal['platform']}</b> 建议:<b>{signal['action']}</b></p>"
+                f"<p>📈 入场:<b>${signal.get('entry', gt_price):,.4f}</b></p>"
+                f"{sl_h}{tp_h}{rr_h}{earn_h}"
+                f"<p>📉 Gate:{gt_rate*100:+.3f}% | Bitget:{bg*100:+.3f}% | OKX:{ox*100:+.3f}%</p>"
+                f"<p>⏰ {datetime.now(tz8).strftime('%Y-%m-%d %H:%M:%S')}</p>"
+            )
+            send_wx(f"🟢 H做多信号: {signal['action']}", html)
     else:
         print("\n无做多信号")
         mn = state.get("min_rate", 0)
