@@ -13,6 +13,13 @@ WX_TOKEN = os.environ.get("WX_TOKEN", "AT_wxNW2KgGrI3o7XJJfYp9Dtx6RQN6JMwB")
 WX_TOPIC = os.environ.get("WX_TOPIC", "42661")
 
 SIGNALS = {
+    # 信号0: 费率深跌后回升趋势 (核心信号, 朋友方案)
+    # 费率从-2%回升到-1.3% = 空头在平仓 = 做多
+    "trend_recovery": {
+        "deep_threshold": -0.005,   # 费率曾低于 -0.5% 才算深跌
+        "recovery_pct": 0.003,      # 回升幅度 > 0.3% (比如-2%→-1.7%)
+        "cooldown": 1800,           # 30分钟冷却
+    },
     "recovery": {"entry": -0.001, "recovery": -0.0003, "cooldown": 3600},
     "extreme_stable": {"rate_threshold": -0.003, "cooldown": 1800},
     "flip": {"min_negative": 5, "cooldown": 3600},
@@ -156,6 +163,36 @@ def check_signal(state, gt_rate, gt_price, bg_rate, ox_rate, pctx):
     rsi_ok = rsi is not None and rsi < 55
     signal = None
 
+    # ===== 信号0: 费率深跌后回升趋势 (核心! 朋友方案) =====
+    # 费率从-2%→-1.3% = 空头在平仓 = 做多信号
+    # 不需要回到0, 只要趋势在回升就触发
+    r = SIGNALS["trend_recovery"]
+    if mn < r["deep_threshold"] and len(pr) >= 3:
+        # 从最低点回升了多少
+        recovery_from_low = gt_rate - mn
+        # 最近3个tick的趋势: 费率在持续回升
+        recent_trend = len(pr) >= 3 and pr[0] > pr[2]  # 最新 > 3轮前
+
+        if recovery_from_low > r["recovery_pct"] and recent_trend:
+            if now - last.get("trend_recovery", 0) > r["cooldown"]:
+                sl = calc_sl(gt_price, pctx.get("support"))
+                tp = calc_tp(gt_price, pctx.get("resistance"), sl)
+                signal = {
+                    "name": "🟢 做多: 空头正在平仓(回升趋势)",
+                    "detail": f"Gate费率 {mn*100:.2f}% → {gt_rate*100:.2f}% (回升 {recovery_from_low*100:.2f}%)",
+                    "reason": f"费率从深负回升 = 空头在买入平仓 = 真实买盘涌入",
+                    "strength": "强" if recovery_from_low > 0.005 else "中",
+                    "action": "做多",
+                    "platform": "Gate",
+                    "entry": gt_price,
+                    "sl": sl,
+                    "tp": tp,
+                    "rr": (tp - gt_price) / (gt_price - sl) if gt_price > sl else 0,
+                    "earn": f"每8小时收{abs(gt_rate)*100:.2f}%",
+                }
+                last["trend_recovery"] = now
+
+    # ===== 信号1: 费率回到接近0 (确认信号) =====
     r = SIGNALS["recovery"]
     if wd and gt_rate >= r["recovery"] and mn < r["entry"]:
         if now - last.get("recovery", 0) > r["cooldown"]:
