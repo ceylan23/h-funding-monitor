@@ -2,7 +2,7 @@ name: H Funding Monitor
 
 on:
   schedule:
-    - cron: '*/10 * * * *'  # 每10分钟
+    - cron: '* * * * *'  # 每1分钟
   workflow_dispatch:
 
 jobs:
@@ -19,9 +19,6 @@ jobs:
         run: pip install requests
 
       - name: Monitor
-        env:
-          WX_TOKEN: ${{ secrets.WX_TOKEN }}
-          WX_TOPIC: ${{ secrets.WX_TOPIC }}
         run: python monitor.py
 
       - name: Save state
