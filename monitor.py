@@ -18,7 +18,7 @@ SIGNALS = {
     "flip": {"min_negative": 5, "cooldown": 3600},
 }
 
-STATE_FILE = "/tmp/funding_state.json"
+STATE_FILE = os.path.join(os.environ.get("TEMP", os.environ.get("TMP", "/tmp")), "funding_state.json")
 sess = requests.Session()
 sess.headers["User-Agent"] = "Mozilla/5.0"
 
