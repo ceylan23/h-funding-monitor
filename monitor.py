@@ -175,8 +175,7 @@ def check_signal(state, gt_rate, gt_price, bg_rate, ox_rate, pctx):
 
         if recovery_from_low > r["recovery_pct"] and recent_trend:
             if now - last.get("trend_recovery", 0) > r["cooldown"]:
-                sl = calc_sl(gt_price, pctx.get("support"))
-                tp = calc_tp(gt_price, pctx.get("resistance"), sl)
+                # 朋友方案: 不设止损止盈, 只提醒入场, 出场自己判断
                 signal = {
                     "tag": "FRIEND_STRATEGY",
                     "name": "🔥 朋友方案: 费率回升趋势(重点信号)",
@@ -186,11 +185,9 @@ def check_signal(state, gt_rate, gt_price, bg_rate, ox_rate, pctx):
                     "action": "做多",
                     "platform": "Gate",
                     "entry": gt_price,
-                    "sl": sl,
-                    "tp": tp,
-                    "rr": (tp - gt_price) / (gt_price - sl) if gt_price > sl else 0,
                     "earn": f"每8小时收{abs(gt_rate)*100:.2f}%",
                     "recovery_pct": recovery_from_low * 100,
+                    "note": "不设止损止盈, 拿住不动, 让利润跑",
                 }
                 last["trend_recovery"] = now
 
@@ -286,15 +283,10 @@ def main():
             print(f"***  {signal['reason']}  ***")
             print(f"***  强度:{signal['strength']} | 平台:{signal['platform']} | 建议:{signal['action']}  ***")
             if signal.get("entry"): print(f"***  入场:${signal['entry']:,.4f}  ***")
-            if signal.get("sl"): print(f"***  止损:${signal['sl']:,.4f}  ***")
-            if signal.get("tp"): print(f"***  止盈:${signal['tp']:,.4f}  ***")
-            if signal.get("rr"): print(f"***  盈亏比:{signal['rr']:.1f}:1  ***")
             if signal.get("earn"): print(f"***  {signal['earn']}  ***")
+            print(f"***  策略: 不设止损止盈, 拿住不动  ***")
             print(f"{'*'*60}")
 
-            sl_h = f"<p>🛑 止损:<b>${signal['sl']:,.4f}</b></p>" if signal.get("sl") else ""
-            tp_h = f"<p>🎯 止盈:<b>${signal['tp']:,.4f}</b></p>" if signal.get("tp") else ""
-            rr_h = f"<p>📊 盈亏比:<b>{signal['rr']:.1f}:1</b></p>" if signal.get("rr") else ""
             earn_h = f"<p>💰 {signal['earn']}</p>" if signal.get("earn") else ""
             html = (
                 f"<h1 style='color:red'>🔥 {signal['name']}</h1>"
@@ -303,7 +295,8 @@ def main():
                 f"<p>💡 <b>{signal['reason']}</b></p>"
                 f"<p>🎯 强度:<b>{signal['strength']}</b> 平台:<b>{signal['platform']}</b></p>"
                 f"<h3>📈 入场:<b>${signal.get('entry', gt_price):,.4f}</b></h3>"
-                f"{sl_h}{tp_h}{rr_h}{earn_h}"
+                f"{earn_h}"
+                f"<p>⚠️ <b>不设止损止盈, 拿住不动, 让利润跑</b></p>"
                 f"<p>📉 Gate:{gt_rate*100:+.3f}% | Bitget:{bg*100:+.3f}% | OKX:{ox*100:+.3f}%</p>"
                 f"<p>⏰ {datetime.now(tz8).strftime('%Y-%m-%d %H:%M:%S')}</p>"
             )
